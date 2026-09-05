@@ -1,0 +1,7 @@
+extensions:
+  - extensions/normalize.yaml
+
+targets:
+  csharp:
+    rules:
+      - csharp/intrinsics.yaml
