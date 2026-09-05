@@ -84,9 +84,13 @@ Only C# is executed by the current experiment. Multi-target execution is a later
 
 ### Case B — semantic declaration only
 
-`case-b/manifest.yaml` references `case-b/extensions/normalize.yaml`.
+`case-b/ruleset.fixture.yaml` models the installable manifest shape and references `case-b/extensions/normalize.yaml`.
 
-That catalog contains:
+It is intentionally **not** named `manifest.yaml`. `vslices update --ruleset` installs a repository archive by discovering exactly one `manifest.yaml`; keeping a second nested manifest in the repository made the experimental branch itself non-installable and correctly triggered `RSM007`.
+
+That observation is now part of the experiment evidence: fixture documents must not accidentally participate in package discovery.
+
+The catalog contains:
 
 ```yaml
 extensions:
@@ -95,29 +99,35 @@ extensions:
       kind: normalize
 ```
 
-There is intentionally no C# realization, so Tooling should admit the semantic and stop at `CSL031`.
+There is intentionally no C# realization, so Tooling should admit the semantic and stop at `CSL031` when this fixture is materialized in isolation.
 
 ### Case C — semantic declaration plus C# realization
 
-The Tooling integration tests construct the same catalog entry with a `targets.csharp` realization and expect deterministic lowering to succeed. A repository fixture may be added when it materially helps cross-repository consumer testing.
+The Tooling integration tests construct the same catalog entry with a `targets.csharp` realization and expect deterministic lowering to succeed. A repository fixture may be added when it materially helps cross-repository consumer testing, but it must not introduce another discoverable package manifest.
 
 ### Case D — renderer without declaration
 
 A standalone renderer may still exist under `targets.csharp.rules`, but without a referenced semantic declaration the VSIR must return to `VSIR221`.
 
-## Isolation rule
+## Isolation and package-discovery rule
 
 Synthetic experiment knowledge must remain outside the production Ruleset surface.
 
 In particular:
 
+- the repository root `manifest.yaml` is the only discoverable Ruleset manifest in the distributable tree;
+- nested experiment fixtures must not be named `manifest.yaml`;
 - the repository root manifest must not reference the synthetic probe catalog;
 - production `csharp/intrinsics.yaml` must not contain `intrinsic.normalize-boundary-probe`;
 - experiment fixtures may model these states only under this directory or in temporary Tooling test projects.
 
+This keeps the updater invariant intact instead of weakening package discovery to accommodate test data.
+
 ## Next exploration
 
 Before generalizing this mechanism beyond `normalize`, the companion Tooling experiment records an explicit impact audit covering manifest/schema evolution, update/install behavior, collisions, provenance/lineage, rebase behavior, multi-target compatibility, core intrinsic representation, and future semantic properties.
+
+The `RSM007` observation adds one concrete item to that audit: repository-level update/install semantics constrain how executable-looking fixtures can coexist with a distributable Ruleset.
 
 The point of that next step is to ask how this catalog shape changes assumptions introduced by the work so far before turning it into a generic extension framework.
 
