@@ -1,6 +1,5 @@
-semantic-extensions:
-  normalize-boundary-probe:
-    kind: normalize
+extensions:
+  - extensions/normalize.yaml
 
 targets:
   csharp:
