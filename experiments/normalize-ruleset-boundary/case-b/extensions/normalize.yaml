@@ -1,4 +1,0 @@
-extensions:
-  - node: intrinsic.normalize-boundary-probe
-    semantic:
-      kind: normalize

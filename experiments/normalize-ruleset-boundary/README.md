@@ -1,10 +1,10 @@
 # Normalize / Ruleset boundary experiment
 
-This directory defines the Ruleset side of the cross-repository `normalize-ruleset-boundary` experiment.
+This directory records the Ruleset-side evidence for the cross-repository `normalize-ruleset-boundary` experiment.
 
-## Scope change
+## Boundary that survived
 
-The original negative-control hypothesis remains valid:
+The original negative-control result remains valid:
 
 ```text
 unknown normalize semantic
@@ -12,27 +12,53 @@ unknown normalize semantic
 != semantically valid VSIR
 ```
 
-The real CLI probe confirmed that an undeclared `normalize-boundary-probe` is rejected as `VSIR221`. A later consumer probe then showed that an explicit declaration can admit that semantic and move the failure boundary to missing target realization (`CSL031`).
+The A/B/C/D experiment established:
 
-That worked, but the first persisted shape required semantic registration and target realization to be authored separately. The current refinement keeps those authorities logically distinct while allowing them to be authored together.
+```text
+undeclared
+-> VSIR221
 
-## Current extension catalog model
+declared project semantic, no C# realization
+-> CSL031
 
-The Ruleset manifest references extension catalogs:
+declared project semantic + C# realization
+-> success
 
-```yaml
-extensions:
-  - extensions/ticketing.yaml
-
-targets:
-  csharp:
-    rules:
-      - csharp/intrinsics.yaml
+renderer without semantic declaration
+-> VSIR221
 ```
 
-An extension entry owns one semantic identity and may carry zero or more target realizations:
+A renderer never becomes semantic authority merely because Tooling can execute it.
+
+## Ownership refinement after review
+
+The first experiment shape referenced extension catalogs from the Ruleset manifest. That made the catalogs look project-owned while physically placing them inside the replaceable `.vslices/ruleset` snapshot.
+
+That lifecycle is now rejected.
+
+```text
+project/.vslices/ruleset
+  = source-owned installed snapshot
+  = replaceable by init --force / update --ruleset
+
+project/.vslices/extensions
+  = project-owned semantic extension overlay
+  = preserved by Ruleset replacement
+```
+
+Consequently, this repository's `manifest.yaml` describes only distributable Ruleset knowledge. It does not reference project semantic extensions, and `manifest.schema.json` no longer declares an `extensions` surface.
+
+The project-owned catalog format lives on the Tooling side and currently looks like:
 
 ```yaml
+# .vslices/extensions/manifest.yaml
+version: 0.1
+catalogs:
+  - ticketing.yaml
+```
+
+```yaml
+# .vslices/extensions/ticketing.yaml
 extensions:
   - node: intrinsic.normalize-boundary-probe
     semantic:
@@ -44,95 +70,60 @@ extensions:
         template: "{value}.Trim()"
 ```
 
-The important invariant remains:
+The semantic declaration and target realization may remain co-located for authoring ergonomics, while Tooling preserves their separate authority.
+
+## What remains in this Ruleset PR
+
+The synthetic `normalize-boundary-probe` no longer needs a distributable Ruleset fixture. Its semantic declaration is project-owned and is exercised by Tooling integration tests and the Ticket Support consumer overlay.
+
+The real `not-whitespace` intrinsic is different. Consumer evidence justified it as core VSIR semantics, so its C# realization belongs in production `csharp/intrinsics.yaml` together with the other core target mappings.
+
+This leaves the Ruleset-side change intentionally small:
 
 ```text
-semantic.kind
-  -> semantic admission
-
-targets.<target>
-  -> target realization
+production C# realization for not-whitespace
++ schema/docs clarifying that project extensions are not Ruleset-owned
 ```
 
-Co-location is an authoring convenience. A target renderer still cannot grant semantic validity by itself.
+## Package-discovery evidence
 
-## Why this shape
+An earlier nested experimental fixture named `manifest.yaml` caused `vslices update --ruleset` to reject the repository archive with `RSM007`, because a distributable Ruleset archive must expose exactly one manifest.
 
-Most projects are expected to have one primary implementation language. Requiring one semantic declaration plus a second target declaration for every custom operation would add ceremony to the common case.
+That behavior remains correct. The fixture was first renamed and is now removed entirely because project extension catalogs no longer belong to a distributable Ruleset fixture.
 
-The catalog shape remains useful when multiple targets are genuinely present, especially during language migration, compatibility periods, or service interoperability:
+The package invariant stays:
 
-```yaml
-extensions:
-  - node: intrinsic.normalize-rut
-    semantic:
-      kind: normalize
-    targets:
-      csharp:
-        mode: deterministic
-        renderer: expression
-        template: "Rut.Normalize({value})"
-      typescript:
-        mode: deterministic
-        renderer: expression
-        template: "normalizeRut({value})"
+```text
+one repository archive
+-> exactly one installable manifest.yaml
 ```
 
-Only C# is executed by the current experiment. Multi-target execution is a later boundary.
+## Relationship to TicketCode and Risk
 
-## Experiment fixtures
+`TicketCode` established the positive core path for `intrinsic.trim`:
 
-### Case B — semantic declaration only
-
-`case-b/ruleset.fixture.yaml` models the installable manifest shape and references `case-b/extensions/normalize.yaml`.
-
-It is intentionally **not** named `manifest.yaml`. `vslices update --ruleset` installs a repository archive by discovering exactly one `manifest.yaml`; keeping a second nested manifest in the repository made the experimental branch itself non-installable and correctly triggered `RSM007`.
-
-That observation is now part of the experiment evidence: fixture documents must not accidentally participate in package discovery.
-
-The catalog contains:
-
-```yaml
-extensions:
-  - node: intrinsic.normalize-boundary-probe
-    semantic:
-      kind: normalize
+```text
+VSIR recognizes trim
+-> Tooling preserves ordered normalization dataflow
+-> Ruleset supplies C# realization
 ```
 
-There is intentionally no C# realization, so Tooling should admit the semantic and stop at `CSL031` when this fixture is materialized in isolation.
+`Risk` then confirmed that core `trim` composes with core `not-whitespace`, validating the normalized value before construction.
 
-### Case C — semantic declaration plus C# realization
+Project extension admission is a separate overlay concern owned by Tooling/consumer projects. This repository supplies target knowledge for core semantics and remains intentionally ignorant of which custom vocabulary a project chooses to admit.
 
-The Tooling integration tests construct the same catalog entry with a `targets.csharp` realization and expect deterministic lowering to succeed. A repository fixture may be added when it materially helps cross-repository consumer testing, but it must not introduce another discoverable package manifest.
+## Non-scope
 
-### Case D — renderer without declaration
+This Ruleset PR does not define:
 
-A standalone renderer may still exist under `targets.csharp.rules`, but without a referenced semantic declaration the VSIR must return to `VSIR221`.
+```text
+project extension lifecycle
+project extension catalog parsing
+implicit semantics from renderer lookup
+multi-target execution
+extension support for ensure/equality/invariants/features
+behavioral equivalence across target realizations
+a universal plugin system
+```
 
-## Isolation and package-discovery rule
-
-Synthetic experiment knowledge must remain outside the production Ruleset surface.
-
-In particular:
-
-- the repository root `manifest.yaml` is the only discoverable Ruleset manifest in the distributable tree;
-- nested experiment fixtures must not be named `manifest.yaml`;
-- the repository root manifest must not reference the synthetic probe catalog;
-- production `csharp/intrinsics.yaml` must not contain `intrinsic.normalize-boundary-probe`;
-- experiment fixtures may model these states only under this directory or in temporary Tooling test projects.
-
-This keeps the updater invariant intact instead of weakening package discovery to accommodate test data.
-
-## Next exploration
-
-Before generalizing this mechanism beyond `normalize`, the companion Tooling experiment records an explicit impact audit covering manifest/schema evolution, update/install behavior, collisions, provenance/lineage, rebase behavior, multi-target compatibility, core intrinsic representation, and future semantic properties.
-
-The `RSM007` observation adds one concrete item to that audit: repository-level update/install semantics constrain how executable-looking fixtures can coexist with a distributable Ruleset.
-
-The point of that next step is to ask how this catalog shape changes assumptions introduced by the work so far before turning it into a generic extension framework.
-
-## Relationship to TicketCode
-
-The TicketCode experiment established the positive core path for `intrinsic.trim`: VSIR recognizes the normalization, Tooling preserves its ordered dataflow, and Ruleset supplies the C# realization.
-
-This experiment adds a controlled path for project-owned semantics without either hard-coding every future operation into `VSlices.Vsir` or allowing target renderers to invent semantic vocabulary implicitly.
+Those mechanisms belong to the companion Tooling experiment when justified by concrete evidence.

@@ -11,18 +11,21 @@ VSIR
   = semantic source
 
 VSlices Ruleset
-  = revisable lowering knowledge
+  = source-owned revisable lowering knowledge
 
 VSlices Tooling
   = execution and orchestration mechanisms
 
 project/.vslices/ruleset
-  = local, version-controlled ruleset snapshot
+  = installed source-owned snapshot
+
+project/.vslices/extensions
+  = project-owned semantic extension overlay
 ```
 
 ## Why this repository exists
 
-Lowering knowledge is expected to evolve as VSIR grows and as target materialization is better understood. Keeping that knowledge outside the CLI allows rules to change, be reviewed, and be experimented with without requiring a new tooling release for every semantic mapping change.
+Lowering knowledge is expected to evolve as VSIR grows and as target materialization is better understood. Keeping that knowledge outside the CLI allows rules to change, be reviewed, and be experimented with without requiring a new tooling release for every target mapping change.
 
 The CLI should therefore know how to discover, load, validate, and execute supported classes of rules, while concrete target mappings live here.
 
@@ -30,9 +33,9 @@ A missing rule is not permission for the CLI or an interpreter to guess. Unsuppo
 
 ## Current status
 
-This repository is experimental. The first supported surface is intentionally small and exists to validate the boundary between tooling mechanisms and lowering knowledge.
+This repository is experimental. The supported surface is intentionally small and exists to validate the boundary between tooling mechanisms and lowering knowledge.
 
-The current ruleset begins with deterministic C# expression mappings for VSIR intrinsics already exercised by the `StreetName` benchmark.
+Current C# rules include deterministic expression mappings for consumer-proven intrinsics such as `non-empty`, `not-whitespace`, `length-at-most`, ordinal equality and `trim`.
 
 ## Layout
 
@@ -43,27 +46,36 @@ csharp/
   intrinsics.yaml
 ```
 
-`manifest.yaml` discovers target-specific rule files. `manifest.schema.json` is external as well: the executable does not embed the concrete manifest schema or the rules contained by this repository.
+`manifest.yaml` discovers target-specific rule files. `manifest.schema.json` describes that distributable snapshot. Project semantic extensions are deliberately **not** part of this manifest.
 
 ## Project-local use
 
-`vslices init` is intended to materialize an official ruleset snapshot under:
+`vslices init` materializes a Ruleset snapshot under:
 
 ```text
 .vslices/ruleset/
 ```
 
-Once initialized, lowering should operate from that local state and should not depend on the network. The local copy is expected to be editable and suitable for version control so project-specific experiments and changes remain visible and reconstructible.
+Lowering operates from that local state and does not require the network after materialization. The snapshot is suitable for version control as evidence of the installed lowering knowledge, but its lifecycle remains source-owned: `vslices init --force` and `vslices update --ruleset` may replace it.
+
+Project-owned semantic extensions therefore live separately under:
+
+```text
+.vslices/extensions/
+```
+
+That overlay is owned by the consumer project and must survive Ruleset replacement. Tooling, rather than this repository, defines and validates the current project-extension catalog format.
 
 ## Evolution principle
 
 A useful working distinction is:
 
 - when VSlices gains a new operational capability, `vslices/tooling` may need to change;
-- when VSlices learns a new way to lower existing semantic structure, this ruleset should usually change instead.
+- when VSlices learns a new way to lower already-recognized core semantic structure, this Ruleset should usually change instead;
+- when one project explicitly admits custom semantic vocabulary, that declaration belongs to the project's `.vslices/extensions` overlay rather than this distributable Ruleset snapshot.
 
-The ruleset is not intended to become an unrestricted plugin or package system. New rule execution primitives should be introduced only when concrete VSIR structures demonstrate the need for them.
+The Ruleset is not intended to become an unrestricted plugin or package system. New rule execution primitives should be introduced only when concrete VSIR structures demonstrate the need for them.
 
 ## Longer-term validation
 
-The ruleset should be exercised through deterministic, reproducible tests in VSlices Tooling. A long-term goal is for VSlices projects, including the tooling itself where appropriate, to increasingly describe representable semantics through `.vsir` artifacts and use the same lowering pipeline they provide to other projects.
+The Ruleset should be exercised through deterministic, reproducible tests in VSlices Tooling. A long-term goal is for VSlices projects, including the tooling itself where appropriate, to increasingly describe representable semantics through `.vsir` artifacts and use the same lowering pipeline they provide to other projects.

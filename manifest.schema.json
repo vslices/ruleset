@@ -7,10 +7,6 @@
     "$schema": { "type": "string" },
     "kind": { "const": "vslices-ruleset" },
     "version": { "type": ["string", "number"] },
-    "extensions": {
-      "type": "array",
-      "items": { "type": "string" }
-    },
     "targets": {
       "type": "object",
       "additionalProperties": {
