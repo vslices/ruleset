@@ -1,0 +1,8 @@
+semantic-extensions:
+  normalize-boundary-probe:
+    kind: normalize
+
+targets:
+  csharp:
+    rules:
+      - csharp/intrinsics.yaml
