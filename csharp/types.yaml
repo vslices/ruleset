@@ -1,0 +1,5 @@
+rules:
+  - node: type.sequence
+    mode: deterministic
+    renderer: type
+    template: "Seq<{value}>"
