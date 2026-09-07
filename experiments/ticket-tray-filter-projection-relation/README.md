@@ -138,7 +138,23 @@ Ruleset can materialize it when target knowledge is required
 
 Ruleset therefore participates in the final leg of **authoring parity**, but does not own the authoring grammar or the semantic language.
 
-`Location` succeeds when the exact normalized VSIR authored through `new -> discovery -> update` can be consumed by `lower` and realized here without a legacy rewrite or implicit semantic insertion.
+`Location` succeeds when the same canonical VSIR 0.1 artifact authored through `new -> discovery -> update` can be consumed by `lower` and realized here without implicit semantic insertion.
+
+## Explicit binding contract
+
+Every target rule declares the complete set of placeholders it accepts through `bindings`.
+
+The contract is exact:
+
+```text
+no duplicate binding declaration
+no undeclared template placeholder
+no declared binding unused by the template
+no missing binding at render time
+no extra binding at render time
+```
+
+The branch CI validates the installable manifest and every rule catalog against this contract. Tooling applies the same rule model to project-owned extension target realizations.
 
 ## Open TicketTrayFilter questions
 
