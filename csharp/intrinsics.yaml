@@ -14,10 +14,20 @@ rules:
     renderer: expression
     template: "{value}.Length <= {max}"
 
+  - node: intrinsic.length-between
+    mode: deterministic
+    renderer: expression
+    template: "{value}.Length >= {min} && {value}.Length <= {max}"
+
   - node: intrinsic.trim
     mode: deterministic
     renderer: expression
     template: "{value}.Trim()"
+
+  - node: intrinsic.concat-space
+    mode: deterministic
+    renderer: expression
+    template: "string.Join(\" \", new[] { {values} })"
 
   - node: equality.ordinal-equals.equals
     mode: deterministic
@@ -43,3 +53,48 @@ rules:
     mode: deterministic
     renderer: expression
     template: "{value}.ToString()"
+
+  - node: projection.represent
+    mode: deterministic
+    renderer: expression
+    template: "{value}.To()"
+
+  - node: projection.select
+    mode: deterministic
+    renderer: expression
+    template: "{source}.{field}"
+
+  - node: projection.map
+    mode: deterministic
+    renderer: expression
+    template: "{source}.Map({bind} => {value})"
+
+  - node: construction.resolve.condition
+    mode: deterministic
+    renderer: expression
+    template: "exists(({source} value) => value.Id == {id})"
+
+  - node: construction.resolve.value
+    mode: deterministic
+    renderer: expression
+    template: "first(({source} value) => value.Id == {id})"
+
+  - node: construction.apply.input
+    mode: deterministic
+    renderer: expression
+    template: "new {over}.Input({arguments})"
+
+  - node: construction.apply.value
+    mode: deterministic
+    renderer: expression
+    template: "{over}.New({input})"
+
+  - node: construction.apply-sequence.input
+    mode: deterministic
+    renderer: expression
+    template: "{source}.Map({bind} => new {over}.Input({arguments}))"
+
+  - node: construction.apply-sequence.value
+    mode: deterministic
+    renderer: expression
+    template: "{over}.New({input})"
