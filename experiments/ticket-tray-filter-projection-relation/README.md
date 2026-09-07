@@ -1,35 +1,42 @@
 # TicketTrayFilter projection relation experiment
 
-This branch is the Ruleset companion to `vslices/tooling:experiment/ticket-tray-filter-projection-relation`.
+This branch is the Ruleset companion to [`vslices/tooling#7`](https://github.com/vslices/tooling/pull/7).
 
 The original `TicketTrayFilter` flattening hypothesis remains gated. The branch has since accumulated independent target-lowering evidence from the same consumer corpus, especially `SrvIdentityId` and `Location`.
 
-## TicketTrayFilter consumer evidence
+For the current cross-repository model:
 
-Ticket Support declares semantic representation coordinates including nominal representation types wrapped in `Option`, while its current Query-facing C# representation flattens several of those coordinates to nullable strings.
+- [`vslices/intermediate-representation`](https://github.com/vslices/intermediate-representation) owns VSIR language semantics;
+- [`vslices/tooling`](https://github.com/vslices/tooling) owns executable parsing, validation, discovery, authoring and lowering mechanisms;
+- this repository owns deterministic target realization knowledge;
+- [`vslices/planifications`](https://github.com/vslices/planifications) owns the progressive migration/reconstruction traversal.
+
+## TicketTrayFilter evidence gate
+
+Ticket Support declares semantic representation coordinates containing nominal representation types wrapped in `Option`, while its current Query-facing C# representation flattens several coordinates to nullable strings.
 
 That difference does not by itself prove that flattening is C# lowering knowledge.
 
-`flatten-single-field` therefore remains a candidate name only, not accepted Ruleset vocabulary.
+`flatten-single-field` therefore remains a candidate relation only, not accepted Ruleset vocabulary.
 
-## Evidence gate
+Do not add a target projection primitive merely because one materialization differs from the semantic representation. A rule is admitted only after:
 
-Do not add a projection primitive merely because a target materialization happens to differ from the semantic representation. A rule is admitted only after Tooling establishes that:
-
-1. the relevant semantic relation is faithfully represented by VSIR;
-2. semantic conservation remains fail-closed;
-3. the C# lowering mechanism can reach a target-knowledge lookup without inventing the relation;
-4. the missing fact is genuinely target-specific rather than consumer policy or missing semantic structure.
+```text
+VSIR faithfully expresses the relation
+semantic conservation remains fail-closed
+Tooling can reach a target-knowledge lookup without inventing the relation
+the missing fact is genuinely target-specific
+```
 
 ## Location evidence crossed
 
-`Location.vsir` now provides explicit semantic structure for relations that were previously blocked behind the lowering mechanism:
+`Location.vsir` now provides explicit semantic structure for relations that previously exposed missing lowering mechanisms:
 
 ```text
 structured type
   sequence<T>
 
-representation expression
+representation expressions
   represent(value)
   select(source-expression, field)
   map(source-expression, binding, value-expression)
@@ -37,56 +44,117 @@ representation expression
 construction
   resolve
   apply with direct input
-  apply with mapped sequence input
+  apply with mapped/container input
 ```
 
-The important distinction is that the Ruleset does not infer those relations. VSIR already states them. Tooling parses and validates their structure, and the Ruleset supplies only deterministic C# realization knowledge.
+The Ruleset does not infer those relations. VSIR states them, Tooling parses/validates their structure, and this repository supplies deterministic C# realization knowledge.
 
-For representation, explicit composition is preserved:
+Current target nodes exercised by the Location path include:
+
+```text
+type.sequence
+projection.stringify
+projection.represent
+projection.select
+projection.map
+construction.resolve.condition
+construction.resolve.value
+construction.apply.input
+construction.apply.value
+construction.apply-sequence.input
+construction.apply-sequence.value
+```
+
+## Explicit representation composition
+
+The composition:
 
 ```text
 select(represent(state.Street), Value)
 ```
 
-lowers through separate `projection.represent` and `projection.select` nodes. `projection.select` does not insert `represent` implicitly.
+reaches separate Ruleset nodes for `projection.represent` and `projection.select`.
 
-For construction, one VSIR `apply` operation remains canonical. The shape of its input determines which C# realization is selected:
+`projection.select` does not create or imply `represent`.
+
+This preserves the VSIR distinction between:
+
+```text
+Select(Represent(state.Street), Value)
+```
+
+and:
+
+```text
+Select(state.Street, Value)
+```
+
+unless an explicit semantic rule establishes equivalence.
+
+## One semantic `apply`
+
+VSIR exposes one semantic `apply` operation.
+
+The shape of its input determines which admitted C# realization is selected:
 
 ```text
 direct input
-  -> Apply
+  -> construction.apply.*
+  -> Apply-style realization
 
-mapped sequence input
-  -> ApplySeq
+mapped/container input
+  -> construction.apply-sequence.*
+  -> ApplySeq-style realization
 ```
 
-This is now an admitted lowering mechanism rather than an authoring-language split into target-shaped verbs.
+The target distinction remains Ruleset/lowering knowledge and does not leak back into VSIR vocabulary as `apply-seq`.
 
 ## Authority boundary
 
 ```text
 VSIR / validation
-  -> admits and preserves semantic structure
+  -> states and admits semantic structure
 
 Tooling
-  -> validates and composes constrained lowering mechanisms
+  -> validates and composes constrained mechanisms
 
 Ruleset
   -> supplies deterministic target realization vocabulary
 ```
 
-A renderer/template still does not create semantic authority by itself. A Ruleset node is usable only when an admitted VSIR semantic structure reaches it through Tooling.
+A renderer/template does not create semantic authority by itself. A Ruleset node is usable only when admitted VSIR structure reaches it through Tooling.
+
+## Authoring parity
+
+The current cross-repository completeness criterion is:
+
+```text
+discovery can explain how to express a VSIR construction
+new/update can author it
+validation can check it
+lower can consume it
+Ruleset can materialize it when target knowledge is required
+```
+
+Ruleset therefore participates in the final leg of **authoring parity**, but does not own the authoring grammar or the semantic language.
+
+`Location` succeeds when the exact normalized VSIR authored through `new -> discovery -> update` can be consumed by `lower` and realized here without a legacy rewrite or implicit semantic insertion.
 
 ## Open TicketTrayFilter questions
 
 - Is flattening authorized by the semantic representation itself, by an explicit relation, or by target policy?
-- Does `Option<X.Repr>` compose as optionality around the projection or as a target nullable convention?
+- Does `Option<X.Repr>` compose as optionality around a projection or as a target nullable convention?
 - What prevents a multi-field `X.Repr` from being flattened accidentally?
-- What target-neutral information must Tooling pass to a rule so the rule does not reconstruct VSIR semantics?
+- What target-neutral information must Tooling pass so the Ruleset does not reconstruct VSIR semantics?
 - What diagnostic is expected when no unique projection is authorized?
 
-## Success criterion
+Until those questions cross the same evidence gate, the original TicketTrayFilter flattening hypothesis remains unresolved.
 
-Location succeeds when the same normalized VSIR that can be progressively authored through `new -> discovery -> update` can also be consumed by `lower` without rewriting it into a legacy grammar or introducing implicit representation/construction semantics.
+## Reconstruction path
 
-The original TicketTrayFilter flattening hypothesis remains unresolved until its own evidence crosses the same gate.
+For a fresh review, read in this order:
+
+1. [`vslices/tooling#7`](https://github.com/vslices/tooling/pull/7) — executable experiment and handoff;
+2. [`vslices/intermediate-representation/SPECIFICATION.md`](https://github.com/vslices/intermediate-representation/blob/main/SPECIFICATION.md) — normative language semantics;
+3. [`vslices/intermediate-representation/AUTHORING-LOWERING-PARITY.md`](https://github.com/vslices/intermediate-representation/blob/main/AUTHORING-LOWERING-PARITY.md) — cross-repository parity model;
+4. [`vslices/planifications/plans/progressive-source-migration.md`](https://github.com/vslices/planifications/blob/main/plans/progressive-source-migration.md) — reconstruction traversal.
