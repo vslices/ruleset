@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - experiment/**
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install YAML parser
+        run: python -m pip install --disable-pip-version-check PyYAML==6.0.2
+      - name: Validate installable Ruleset and bindings
+        shell: python
+        run: |
+          import pathlib
+          import re
+          import sys
+          import yaml
+
+          root = pathlib.Path('.')
+          manifest = yaml.safe_load((root / 'manifest.yaml').read_text(encoding='utf-8'))
+          targets = manifest.get('targets') if isinstance(manifest, dict) else None
+          if not isinstance(targets, dict) or set(targets) != {'csharp'}:
+              raise SystemExit('manifest.yaml must declare exactly the csharp target')
+
+          csharp = targets['csharp']
+          rule_files = csharp.get('rules') if isinstance(csharp, dict) else None
+          if not isinstance(rule_files, list) or not rule_files:
+              raise SystemExit('manifest.yaml must declare a non-empty csharp.rules list')
+          if len(rule_files) != len(set(rule_files)):
+              raise SystemExit('manifest.yaml contains duplicate rule files')
+
+          placeholder = re.compile(r'\{(?P<name>[A-Za-z_][A-Za-z0-9_]*)\}')
+          nodes = set()
+          count = 0
+          for relative in rule_files:
+              if not isinstance(relative, str) or not relative:
+                  raise SystemExit('manifest rule paths must be non-empty strings')
+              path = root / relative
+              if not path.is_file():
+                  raise SystemExit(f'manifest references missing rule file: {relative}')
+              catalog = yaml.safe_load(path.read_text(encoding='utf-8'))
+              rules = catalog.get('rules') if isinstance(catalog, dict) else None
+              if not isinstance(rules, list) or not rules:
+                  raise SystemExit(f'{relative} must contain a non-empty rules list')
+
+              for index, rule in enumerate(rules):
+                  prefix = f'{relative} rule #{index + 1}'
+                  if not isinstance(rule, dict):
+                      raise SystemExit(f'{prefix} must be a mapping')
+                  required = {'node', 'mode', 'renderer', 'bindings', 'template'}
+                  unknown = set(rule) - required
+                  missing = required - set(rule)
+                  if unknown:
+                      raise SystemExit(f'{prefix} contains unknown keys: {sorted(unknown)}')
+                  if missing:
+                      raise SystemExit(f'{prefix} is missing keys: {sorted(missing)}')
+
+                  node = rule['node']
+                  if not isinstance(node, str) or not node:
+                      raise SystemExit(f'{prefix} node must be a non-empty string')
+                  if node in nodes:
+                      raise SystemExit(f'duplicate rule node: {node}')
+                  nodes.add(node)
+
+                  if rule['mode'] != 'deterministic':
+                      raise SystemExit(f'{node}: unsupported mode {rule["mode"]!r}')
+                  if rule['renderer'] not in {'expression', 'type'}:
+                      raise SystemExit(f'{node}: unsupported renderer {rule["renderer"]!r}')
+
+                  bindings = rule['bindings']
+                  if not isinstance(bindings, list) or any(not isinstance(x, str) or not x for x in bindings):
+                      raise SystemExit(f'{node}: bindings must be a list of non-empty strings')
+                  if len(bindings) != len(set(bindings)):
+                      raise SystemExit(f'{node}: duplicate binding declarations')
+
+                  template = rule['template']
+                  if not isinstance(template, str) or not template:
+                      raise SystemExit(f'{node}: template must be a non-empty string')
+                  used = set(placeholder.findall(template))
+                  declared = set(bindings)
+                  undeclared = used - declared
+                  unused = declared - used
+                  if undeclared:
+                      raise SystemExit(f'{node}: template uses undeclared bindings: {sorted(undeclared)}')
+                  if unused:
+                      raise SystemExit(f'{node}: declared bindings are unused: {sorted(unused)}')
+                  count += 1
+
+          print(f'Validated {count} C# lowering rules across {len(rule_files)} catalogs.')
