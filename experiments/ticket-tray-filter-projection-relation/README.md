@@ -2,7 +2,7 @@
 
 This branch is the Ruleset companion to [`vslices/tooling#7`](https://github.com/vslices/tooling/pull/7).
 
-The original `TicketTrayFilter` flattening hypothesis remains gated. The branch has since accumulated independent target-lowering evidence from the same consumer corpus, especially `SrvIdentityId` and `Location`.
+The original `TicketTrayFilter` flattening hypothesis remains gated. The branch has since accumulated independent target-lowering evidence from the same consumer corpus, especially `SrvIdentityId`, `Location`, `StreetExtension`, and `Name`.
 
 For the current cross-repository model:
 
@@ -30,7 +30,7 @@ the missing fact is genuinely target-specific
 
 ## Location evidence crossed
 
-`Location.vsir` now provides explicit semantic structure for relations that previously exposed missing lowering mechanisms:
+`Location.vsir` provides explicit semantic structure for relations that previously exposed missing lowering mechanisms:
 
 ```text
 structured type
@@ -64,6 +64,37 @@ construction.apply.value
 construction.apply-sequence.input
 construction.apply-sequence.value
 ```
+
+## Name condition-expression evidence crossed
+
+`Name.vsir` adds a condition over a derived semantic string. The language expresses the derivation explicitly rather than overloading `length-at-most` with collection behavior:
+
+```yaml
+condition:
+  intrinsic: length-at-most
+  args:
+    value:
+      intrinsic: concat-space
+      values:
+        - input.Names
+        - input.FirstSurname
+        - input.SecondSurname
+    max: 92
+```
+
+The target-neutral expression tree is owned by VSIR. Tooling recursively lowers the inner expression first and then supplies its rendered value to the outer condition.
+
+This repository already owns the deterministic C# realization:
+
+```text
+intrinsic.concat-space
+  bindings: [values]
+  -> string.Join(" ", new[] { ... })
+```
+
+The same Ruleset node is intentionally reused whether the semantic expression appears in a representation projection or as an argument to a construction condition. Context does not create a second concat relation.
+
+The inserted spaces are part of the rendered string and therefore contribute to a subsequent `.Length` check. Optional-operand target realization remains a separate type/lowering concern; no nullable/Option flattening is inferred here.
 
 ## Explicit representation composition
 
@@ -138,8 +169,6 @@ Ruleset can materialize it when target knowledge is required
 
 Ruleset therefore participates in the final leg of **authoring parity**, but does not own the authoring grammar or the semantic language.
 
-`Location` succeeds when the same canonical VSIR 0.1 artifact authored through `new -> discovery -> update` can be consumed by `lower` and realized here without implicit semantic insertion.
-
 ## Explicit binding contract
 
 Every target rule declares the complete set of placeholders it accepts through `bindings`.
@@ -171,6 +200,6 @@ Until those questions cross the same evidence gate, the original TicketTrayFilte
 For a fresh review, read in this order:
 
 1. [`vslices/tooling#7`](https://github.com/vslices/tooling/pull/7) — executable experiment and handoff;
-2. [`vslices/intermediate-representation/SPECIFICATION.md`](https://github.com/vslices/intermediate-representation/blob/main/SPECIFICATION.md) — normative language semantics;
+2. [`vslices/intermediate-representation/SPECIFICATION.md`](https://github.com/vslices/intermediate-representation/blob/main/SPECIFICATION.md) and the active experimental amendments — normative language semantics;
 3. [`vslices/intermediate-representation/AUTHORING-LOWERING-PARITY.md`](https://github.com/vslices/intermediate-representation/blob/main/AUTHORING-LOWERING-PARITY.md) — cross-repository parity model;
 4. [`vslices/planifications/plans/progressive-source-migration.md`](https://github.com/vslices/planifications/blob/main/plans/progressive-source-migration.md) — reconstruction traversal.
