@@ -4,3 +4,9 @@ rules:
     renderer: type
     bindings: [value]
     template: "Seq<{value}>"
+
+  - node: type.optional
+    mode: deterministic
+    renderer: type
+    bindings: [value]
+    template: "Option<{value}>"
