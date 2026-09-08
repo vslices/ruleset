@@ -79,6 +79,12 @@ rules:
     bindings: [value]
     template: "{value}.GetHashCode()"
 
+  - node: identity.construct
+    mode: deterministic
+    renderer: expression
+    bindings: [type, value]
+    template: "{type}.New({value})"
+
   - node: projection.stringify
     mode: deterministic
     renderer: expression
