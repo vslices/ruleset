@@ -23,17 +23,19 @@ rules:
     bindings: [value, min, max]
     template: "{value}.Length >= {min} && {value}.Length <= {max}"
 
-  - node: intrinsic.trim
-    mode: deterministic
-    renderer: expression
-    bindings: [value]
-    template: "{value}.Trim()"
-
+  # Semantic concat-space is context-independent: representation mappings and
+  # construction condition arguments reach the same target realization.
   - node: intrinsic.concat-space
     mode: deterministic
     renderer: expression
     bindings: [values]
     template: "string.Join(\" \", new[] { {values} })"
+
+  - node: intrinsic.trim
+    mode: deterministic
+    renderer: expression
+    bindings: [value]
+    template: "{value}.Trim()"
 
   - node: refine.split-first-rest.condition
     mode: deterministic
