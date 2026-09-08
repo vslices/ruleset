@@ -38,7 +38,9 @@ jobs:
           if len(rule_files) != len(set(rule_files)):
               raise SystemExit('manifest.yaml contains duplicate rule files')
 
-          placeholder = re.compile(r'\{(?P<name>[A-Za-z_][A-Za-z0-9_]*)\}')
+          # Keep this lexical contract identical to Tooling's
+          # CSharpLoweringRuleSet placeholder grammar.
+          placeholder = re.compile(r'\{(?P<name>[A-Za-z][A-Za-z0-9_-]*)\}')
           nodes = set()
           count = 0
           for relative in rule_files:
